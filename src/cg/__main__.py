@@ -37,7 +37,7 @@ class Chunk:
             len(row) != CHUNK_WIDTH for row in self.matrix
         )
 
-    def is_wall(self, x: int, y: int) -> bool:
+    def is_wall_at(self, x: int, y: int) -> bool:
         return self.matrix[y][x] != " "
 
     def print(self, stdscr: curses.window, player_x: int, player_y: int) -> None:
@@ -118,8 +118,8 @@ class Player:
 
 class Map:
     def __init__(self, chunks: list[Chunk], player: Player) -> None:
-        self.matrix = dispatch_chunks(chunks)
-        self.player = player
+        self.matrix: list[list[Chunk | None]] = dispatch_chunks(chunks)
+        self.player: Player = player
 
     def move(
         self,
@@ -145,7 +145,7 @@ class Map:
             if player_chunk is None:
                 raise RuntimeError("player is in the void")
 
-            if not player_chunk.is_wall(cell_x, cell_y):
+            if not player_chunk.is_wall_at(cell_x, cell_y):
                 action()
 
     def move_left(self, *, player_run: bool = False) -> None:
