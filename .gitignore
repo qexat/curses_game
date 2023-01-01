@@ -1,0 +1,11 @@
+# Python
+*.pyc
+
+# Pip
+*.egg-info
+
+# MyPy
+.mypy_cache/*
+
+# Misc
+/debug.txt
