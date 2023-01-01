@@ -28,6 +28,7 @@ class Chunk:
         self.matrix: list[list[str]] = make_matrix(self.raw)
         self.pos = self.x, self.y = x, y
 
+        # Useful if I mess up a chunk file lol
         if self.is_invalid():
             raise ValueError(f"chunk size must be {CHUNK_WIDTH}x{CHUNK_HEIGHT}")
 
@@ -272,7 +273,6 @@ def main(stdscr: curses.window) -> int:
             case 336:  # SHIFT+DOWN
                 map.move_up(player_run=True)
 
-        map.player.walk()
         stdscr.erase()
 
 
