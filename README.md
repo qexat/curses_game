@@ -23,3 +23,4 @@ python3 src/cg/
 
 <video src="https://user-images.githubusercontent.com/43090614/210164587-59e0581a-b703-4f3b-9928-1d477147bf2d.mp4"></video>
 
+> VS Code Theme: <https://github.com/qexat/qexat-theme>
