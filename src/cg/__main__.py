@@ -3,9 +3,10 @@ from __future__ import annotations
 import curses
 import os.path
 from collections.abc import Callable
+from dataclasses import dataclass
 
 ## print(something, file=DEBUG_FILE) anywhere to retrieve values
-# DEBUG_FILE = open("debug.txt", "w")
+DEBUG_FILE = open("debug.txt", "w")
 ##
 
 
@@ -20,6 +21,10 @@ VALID_CHUNK_POS_Y = list(map(str, CHUNK_Y_RANGE))
 
 # 'A1' -> 'Z9'
 VALID_CHUNK_NAME = [CPX + CPY for CPY in VALID_CHUNK_POS_Y for CPX in VALID_CHUNK_POS_X]
+
+
+WALLS = {"&"}
+DOORS = list(map(str, range(10)))
 
 
 class Chunk:
@@ -38,7 +43,29 @@ class Chunk:
         )
 
     def is_wall_at(self, x: int, y: int) -> bool:
-        return self.matrix[y][x] != " "
+        return self.matrix[y][x] in WALLS
+
+    def get_door_at(self, x: int, y: int) -> str | None:
+        if not self.matrix[y][x] in DOORS:
+            return None
+        return self.matrix[y][x]
+
+    def get_door_pos(self, door: str) -> list[tuple[int, int]]:
+        return [
+            (x, y)
+            for y, row in enumerate(self.matrix)
+            for x, cell in enumerate(row)
+            if cell == door
+        ]
+
+    def get_entrances(self) -> dict[str, list[DoorEntrance]]:
+        doors_entrances: dict[str, list[DoorEntrance]] = {}
+        for door in DOORS:
+            entrances: list[DoorEntrance] = []
+            for x, y in self.get_door_pos(door):
+                entrances.append(DoorEntrance(self, x, y))
+            doors_entrances[door] = entrances
+        return doors_entrances
 
     def print(self, stdscr: curses.window, player_x: int, player_y: int) -> None:
         stdscr.move(0, 0)
@@ -80,6 +107,16 @@ class Chunk:
         return self.pos < other.pos
 
 
+@dataclass
+class DoorEntrance:
+    chunk: Chunk
+    x: int
+    y: int
+
+
+DoorPipeDict = dict[str, list[DoorEntrance]]
+
+
 class Player:
     walk_speed = 1
     run_speed = 2
@@ -110,6 +147,14 @@ class Player:
     def go_down(self) -> None:
         self.y += self.speed
 
+    def teleport(self, entrance: DoorEntrance) -> None:
+        x = entrance.chunk.x * CHUNK_WIDTH + entrance.x
+        y = entrance.chunk.y * CHUNK_HEIGHT + entrance.y
+        self.x, self.y = x, y
+
+    def move(self, x: int, y: int) -> None:
+        self.x, self.y = x, y
+
     def print(self, stdscr: curses.window) -> None:
         cx, cy = get_terminal_center()
         stdscr.move(cy, cx)
@@ -120,6 +165,7 @@ class Map:
     def __init__(self, chunks: list[Chunk], player: Player) -> None:
         self.matrix: list[list[Chunk | None]] = dispatch_chunks(chunks)
         self.player: Player = player
+        self.doors_entrances: DoorPipeDict = find_door_pipes(chunks)
 
     def move(
         self,
@@ -137,15 +183,21 @@ class Map:
         self.player.walk()
 
         for _ in range(move_speed):
-            chunk_x, cell_x = divmod(self.player.x + dx, CHUNK_WIDTH)
-            chunk_y, cell_y = divmod(self.player.y + dy, CHUNK_HEIGHT)
+            chunk_x, x = divmod(self.player.x + dx, CHUNK_WIDTH)
+            chunk_y, y = divmod(self.player.y + dy, CHUNK_HEIGHT)
 
             player_chunk = self.matrix[chunk_y][chunk_x]
 
             if player_chunk is None:
                 raise RuntimeError("player is in the void")
 
-            if not player_chunk.is_wall_at(cell_x, cell_y):
+            if (door := player_chunk.get_door_at(x, y)) is not None:
+                next_entrance = self.get_next_entrance(player_chunk, x, y, door)
+                c = next_entrance.chunk
+                print(c.x, c.y, file=DEBUG_FILE)
+                self.player.teleport(next_entrance)
+
+            elif not player_chunk.is_wall_at(x, y):
                 action()
 
     def move_left(self, *, player_run: bool = False) -> None:
@@ -167,6 +219,21 @@ class Map:
         # ix, iy = self.player.x // CHUNK_WIDTH, self.player.y // CHUNK_HEIGHT
         # return slice_matrix(self.matrix, ix, iy)
         ##
+
+    def get_next_entrance(
+        self,
+        chunk: Chunk,
+        x: int,
+        y: int,
+        door: str,
+    ) -> DoorEntrance:
+        current_entrance = DoorEntrance(chunk, x, y)
+        entrances = self.doors_entrances[door]
+        for i, entrance in enumerate(entrances):
+            if entrance == current_entrance:
+                return entrances[(i + 1) % len(entrances)]
+
+        raise ValueError("door has only one entrance")
 
     def print(self, stdscr: curses.window) -> None:
         visible_chunks = self.get_visible_chunks()
@@ -205,6 +272,16 @@ def dispatch_chunks(chunks: list[Chunk]) -> list[list[Chunk | None]]:
         chunk_matrix[chunk.y][chunk.x] = chunk
 
     return chunk_matrix
+
+
+def find_door_pipes(chunks: list[Chunk]) -> DoorPipeDict:
+    door_pipes: DoorPipeDict = {door: [] for door in DOORS}
+
+    for chunk in chunks:
+        for door, entrances in chunk.get_entrances().items():
+            door_pipes[door].extend(entrances)
+
+    return door_pipes
 
 
 def slice_matrix(
