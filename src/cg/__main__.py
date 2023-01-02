@@ -170,11 +170,14 @@ class Map:
             chunk.print(stdscr, self.player.x, self.player.y)
 
     @classmethod
-    def load(cls, *, player: Player):
+    def load(cls, player: Player, *skip_chunks: str):
         chunks_dir = os.path.join(os.path.dirname(__file__), "chunks")
         chunks: list[Chunk] = []
 
         for chunk_name in VALID_CHUNK_NAME:
+            if chunk_name in skip_chunks:
+                continue
+
             chunk_path = os.path.join(chunks_dir, chunk_name)
             if os.path.exists(chunk_path):
                 chunks.append(Chunk.from_file(chunk_path))
@@ -244,7 +247,7 @@ def main(stdscr: curses.window) -> int:
     curses.curs_set(0)
 
     player = Player("P", x=2, y=2)
-    map = Map.load(player=player)
+    map = Map.load(player)
 
     while True:
         map.print(stdscr)
