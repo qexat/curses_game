@@ -50,7 +50,7 @@ class Chunk:
             for rel_x, cell in enumerate(row):
                 abs_x = center_x - player_x + (CHUNK_WIDTH * self.x) + rel_x
                 abs_y = center_y - player_y + (CHUNK_HEIGHT * self.y) + rel_y
-                if 0 <= abs_x < max_x and 0 <= abs_y < max_y:
+                if 0 <= abs_x < (max_x - 1) and 0 <= abs_y < (max_y - 1):
                     stdscr.addch(abs_y, abs_x, cell)
 
     @classmethod
@@ -161,8 +161,12 @@ class Map:
         self.move(self.player.go_up, dy=-1, player_run=player_run)
 
     def get_visible_chunks(self) -> list[Chunk]:
-        ix, iy = self.player.x // CHUNK_WIDTH, self.player.y // CHUNK_HEIGHT
-        return slice_matrix(self.matrix, ix, iy)
+        return [chunk for row in self.matrix for chunk in row if chunk is not None]
+
+        ## KEEPING THIS CODE IN CASE OF PERFORMANCE ISSUES
+        # ix, iy = self.player.x // CHUNK_WIDTH, self.player.y // CHUNK_HEIGHT
+        # return slice_matrix(self.matrix, ix, iy)
+        ##
 
     def print(self, stdscr: curses.window) -> None:
         visible_chunks = self.get_visible_chunks()
@@ -208,9 +212,15 @@ def slice_matrix(
     cx: int,
     cy: int,
 ) -> list[Chunk]:
+    # NOTE: This function is not used anymore, but might be in the future
+    # if performance issues occur
+
     chunks: list[Chunk] = []
     max_x, max_y = get_terminal_size()
-    visible_chunks_x, visible_chunks_y = (max_x // CHUNK_WIDTH), (max_y // CHUNK_HEIGHT)
+    visible_chunks_x, visible_chunks_y = (
+        max_x // CHUNK_WIDTH + 2,
+        max_y // CHUNK_HEIGHT + 2,
+    )
     for row in chunk_matrix[
         max(cy - visible_chunks_y // 2, 0) : cy + max(visible_chunks_y // 2, 1)
     ]:
