@@ -19,6 +19,10 @@ python3 src/cg/
 - To run, press `Shift` simultaneously.
 - Pressing `Enter` quits the program.
 
+Encountering a portal (any digit) will teleport you to the next similar one\*, with movement conservation.
+
+\* if you go through `2`, you'll be teleported to the next `2`.
+
 ## Demo
 
 <video src="https://user-images.githubusercontent.com/43090614/210164587-59e0581a-b703-4f3b-9928-1d477147bf2d.mp4"></video>
