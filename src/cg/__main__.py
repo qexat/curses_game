@@ -4,6 +4,7 @@ import curses
 import os.path
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import Enum
 
 ## print(something, file=DEBUG_FILE) anywhere to retrieve values
 DEBUG_FILE = open("debug.txt", "w")
@@ -25,6 +26,14 @@ VALID_CHUNK_NAME = [CPX + CPY for CPY in VALID_CHUNK_POS_Y for CPX in VALID_CHUN
 
 WALLS = {"&"}
 DOORS = list(map(str, range(10)))
+
+
+# for further hitbox implementation
+class Direction(Enum):
+    Up = 0
+    Down = 1
+    Left = 2
+    Right = 3
 
 
 class Chunk:
@@ -59,13 +68,7 @@ class Chunk:
         ]
 
     def get_entrances(self) -> dict[str, list[DoorEntrance]]:
-        doors_entrances: dict[str, list[DoorEntrance]] = {}
-        for door in DOORS:
-            entrances: list[DoorEntrance] = []
-            for x, y in self.get_door_pos(door):
-                entrances.append(DoorEntrance(self, x, y))
-            doors_entrances[door] = entrances
-        return doors_entrances
+        return {door: [DoorEntrance(self, x, y) for x, y in self.get_door_pos(door)] for door in DOORS}
 
     def print(self, stdscr: curses.window, player_x: int, player_y: int) -> None:
         stdscr.move(0, 0)
@@ -251,7 +254,9 @@ class Map:
 
             chunk_path = os.path.join(chunks_dir, chunk_name)
             if os.path.exists(chunk_path):
-                chunks.append(Chunk.from_file(chunk_path))
+                if (chunk := Chunk.from_file(chunk_path)) in chunks:
+                    raise ValueError(f"found duplicate {chunk_name!r}")
+                chunks.append(chunk)
 
         return cls(chunks, player)
 
